@@ -1,0 +1,26 @@
+version: "3.8"
+
+services:
+  otel-lgtm:
+    image: grafana/otel-lgtm:latest
+    container_name: otel-lgtm
+    restart: unless-stopped
+    ports:
+      # Grafana UI
+      - "3000:3000"
+      # OTLP gRPC receiver
+      - "4317:4317"
+      # OTLP HTTP receiver
+      - "4318:4318"
+    volumes:
+      # Custom OTel Collector configuration
+      - ./otel-config.yaml:/otel-lgtm/otelcol-config.yaml:ro
+    environment:
+      # Enable debug logging if needed
+      - OTEL_METRIC_EXPORT_INTERVAL=15000
+    # Required for hostmetrics receiver to access host system metrics
+    pid: host
+    # Grant read access to host filesystem for system metrics
+    volumes_from: []
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

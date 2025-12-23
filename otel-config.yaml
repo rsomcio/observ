@@ -1,0 +1,139 @@
+# OpenTelemetry Collector Configuration for grafana/otel-lgtm stack
+# Follows OTel semantic conventions
+
+receivers:
+  # OTLP receiver for application telemetry
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Host metrics receiver for local system metrics (CPU/RAM)
+  hostmetrics:
+    collection_interval: 15s
+    scrapers:
+      cpu:
+        metrics:
+          system.cpu.utilization:
+            enabled: true
+      memory:
+        metrics:
+          system.memory.utilization:
+            enabled: true
+      disk:
+      filesystem:
+      load:
+      network:
+      processes:
+
+processors:
+  # Batch processor for efficient data transmission
+  batch:
+    send_batch_size: 1000
+    timeout: 10s
+
+  # Resource detection for automatic host metadata
+  resourcedetection:
+    detectors:
+      - env
+      - system
+    system:
+      hostname_sources:
+        - os
+      resource_attributes:
+        host.name:
+          enabled: true
+        host.id:
+          enabled: true
+        os.type:
+          enabled: true
+
+  # Add resource attributes for better identification
+  resource:
+    attributes:
+      - key: service.namespace
+        value: homelab
+        action: upsert
+      - key: deployment.environment
+        value: local
+        action: upsert
+
+exporters:
+  # Debug exporter for troubleshooting (optional)
+  debug:
+    verbosity: basic
+
+  # OTLP HTTP exporter for metrics -> internal Mimir/Prometheus
+  # Mimir accepts OTLP at /api/v1/otlp endpoint
+  otlphttp/metrics:
+    endpoint: http://localhost:9090/api/v1/otlp
+    tls:
+      insecure: true
+
+  # OTLP HTTP exporter for traces -> internal Tempo
+  # Tempo accepts OTLP at /v1/traces endpoint on port 4318
+  otlphttp/traces:
+    endpoint: http://localhost:4318
+    tls:
+      insecure: true
+
+  # OTLP HTTP exporter for logs -> internal Loki
+  # Loki accepts OTLP at /otlp/v1/logs endpoint
+  otlphttp/logs:
+    endpoint: http://localhost:3100/otlp/v1/logs
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions:
+    - health_check
+
+  pipelines:
+    # Metrics pipeline: hostmetrics + OTLP -> Mimir
+    metrics:
+      receivers:
+        - otlp
+        - hostmetrics
+      processors:
+        - resourcedetection
+        - resource
+        - batch
+      exporters:
+        - otlphttp/metrics
+        - debug
+
+    # Traces pipeline: OTLP -> Tempo
+    traces:
+      receivers:
+        - otlp
+      processors:
+        - resourcedetection
+        - resource
+        - batch
+      exporters:
+        - otlphttp/traces
+        - debug
+
+    # Logs pipeline: OTLP -> Loki
+    logs:
+      receivers:
+        - otlp
+      processors:
+        - resourcedetection
+        - resource
+        - batch
+      exporters:
+        - otlphttp/logs
+        - debug
+
+  telemetry:
+    logs:
+      level: info
+    metrics:
+      address: 0.0.0.0:8888
