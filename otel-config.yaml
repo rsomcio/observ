@@ -80,9 +80,9 @@ exporters:
       insecure: true
 
   # OTLP HTTP exporter for logs -> internal Loki
-  # Loki accepts OTLP at /otlp/v1/logs endpoint
+  # Loki accepts OTLP at /otlp endpoint (exporter appends /v1/logs)
   otlphttp/logs:
-    endpoint: http://localhost:3100/otlp/v1/logs
+    endpoint: http://localhost:3100/otlp
     tls:
       insecure: true
 

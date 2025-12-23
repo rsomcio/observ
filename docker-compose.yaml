@@ -16,8 +16,9 @@ services:
       # Custom OTel Collector configuration
       - ./otel-config.yaml:/otel-lgtm/otelcol-config.yaml:ro
     environment:
-      # Enable debug logging if needed
       - OTEL_METRIC_EXPORT_INTERVAL=15000
+      # Uncomment for debugging:
+      # - ENABLE_LOGS_OTELCOL=true
     # Required for hostmetrics receiver to access host system metrics
     pid: host
     # Grant read access to host filesystem for system metrics
